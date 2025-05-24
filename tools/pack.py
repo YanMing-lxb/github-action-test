@@ -19,9 +19,9 @@
  -----------------------------------------------------------------------
 Author       : 焱铭
 Date         : 2025-04-25 12:28:56 +0800
-LastEditTime : 2025-05-21 14:04:00 +0800
+LastEditTime : 2025-05-24 13:51:04 +0800
 Github       : https://github.com/YanMing-lxb/
-FilePath     : /RefrTruck-HeatLoad-Solver/tools/pack.py
+FilePath     : /github-action-test/tools/pack.py
 Description  : 
  -----------------------------------------------------------------------
 '''
@@ -198,7 +198,6 @@ def install_dependencies(venv_name: str = VENV_NAME) -> bool:
 def run_pyinstaller(venv_name: str = VENV_NAME) -> bool:
     """flet pack 打包应用程序"""
     flet_path = get_venv_tool(venv_name, "flet")
-    # 打包参数配置
 
     args = [
         str(flet_path),
@@ -215,13 +214,65 @@ def run_pyinstaller(venv_name: str = VENV_NAME) -> bool:
         "--file-description", PROJECT_NAME,
         str(ENTRY_POINT.resolve())
     ]
-    return run_command(
+    
+    success = run_command(
         command=args,
         success_msg=f"应用程序打包成功 → [bold underline]dist/{PROJECT_NAME}[/]",
         error_msg="打包失败",
         process_name="打包应用程序"
     )
+    
+    return success
+    
+def build_setup_installer(version: str = __version__) -> bool:
+    """使用 Inno Setup 编译安装包，并整理资源目录结构"""
+    console.print("📦 开始构建安装包", style="status")
 
+    # 移动 _internal 到 other/_internal
+    project_dir = Path("dist") / PROJECT_NAME
+    internal_dir = project_dir / "_internal"
+    target_dir = project_dir / "other" / "_internal"
+
+    if internal_dir.exists():
+        try:
+            target_dir.parent.mkdir(parents=True, exist_ok=True)
+            shutil.move(str(internal_dir), str(target_dir))
+            console.print(f"✓ _internal 文件夹已移动至 {target_dir}", style="success")
+        except Exception as e:
+            console.print(f"✗ 移动 _internal 文件夹失败：{e}", style="error")
+            return False
+
+    # 构建安装包
+    command = [
+        "ISCC",
+        f"/DMyAppName={PROJECT_NAME}",
+        f"/DMyAppVersion={version}",
+        f"/DMyAppExeName={PROJECT_NAME}.exe",
+        f"/F{PROJECT_NAME}-{version}-setup",
+        "/Odist",
+        ".\\tools\\Inno Setup Script.iss"
+    ]
+
+    success = run_command(
+        command=command,
+        success_msg=f"安装包构建成功 → dist\{PROJECT_NAME}-{version}-setup.exe",
+        error_msg="安装包构建失败",
+        process_name="构建安装包"
+    )
+
+    # 将 _internal 从 other/_internal 移回来
+    if target_dir.exists() and not internal_dir.exists():
+        try:
+            target_dir.parent.mkdir(parents=True, exist_ok=True)
+            shutil.move(str(target_dir), str(internal_dir))
+            console.print(f"✓ _internal 文件夹已移回至 {internal_dir}", style="info")
+        except Exception as e:
+            console.print(f"⚠️ 回移 _internal 文件夹失败：{e}", style="warning")
+            # 非致命错误，继续返回 success 状态
+    elif internal_dir.exists():
+        console.print("⚠️ _internal 文件夹已存在，跳过回移", style="warning")
+
+    return success
 def verify_pack() -> bool:
     """验证打包结果"""
     exe_path = Path("dist") / PROJECT_NAME / (PROJECT_NAME + (".exe" if os.name == "nt" else ""))
@@ -237,6 +288,26 @@ def verify_pack() -> bool:
             console.print(f"✗ 验证失败: {msg}", style="error")
             all_ok = False
             
+    return all_ok
+
+def verify_installer(version: str = __version__) -> bool:
+    """验证安装包是否生成成功"""
+    installer_path = Path("dist") / f"{PROJECT_NAME}-{version}-setup.exe"
+
+    checks = [
+        (installer_path.exists(), "安装包未生成"),
+        (installer_path.stat().st_size > 1024 * 1024, "安装包大小异常（<1MB）")
+    ]
+
+    all_ok = True
+    for condition, msg in checks:
+        if not condition:
+            console.print(f"✗ 验证失败: {msg}", style="error")
+            all_ok = False
+
+    if all_ok:
+        console.print(f"✓ 安装包已生成：{installer_path}", style="success")
+
     return all_ok
 
 def clean_up():
@@ -266,24 +337,54 @@ def clean_up():
 if __name__ == "__main__":
     try:
         console.rule(f"[bold]🚀 {PROJECT_NAME} 打包系统[/]")
-        
+
+        if len(sys.argv) < 2:
+            console.print("⚠️ 请指定操作模式：pack 或 setup", style="warning")
+            console.print("例如：")
+            console.print("  python pack.py pack   # 仅打包程序")
+            console.print("  python pack.py setup # 打包并构建安装包")
+            sys.exit(1)
+
+        mode = sys.argv[1].lower()
+
+        if mode not in ("pack", "setup"):
+            console.print(f"❌ 不支持的模式: {mode}", style="error")
+            console.print("可用模式：pack, setup", style="info")
+            sys.exit(1)
+
         if not pre_check():
             console.rule("[bold red]❌ 预检查失败，打包终止！[/]")
             sys.exit(1)
 
-        success = all([
-            create_venv(),
-            install_dependencies(),
-            run_pyinstaller(),
-            verify_pack()
-        ])
+        steps = []
+
+        # 如果是 pack 模式，则执行完整打包流程
+        if mode == "pack":
+            steps.extend([
+                create_venv(),
+                install_dependencies(),
+                run_pyinstaller(),
+                verify_pack()
+            ])
+        # 如果是 setup 模式，则只执行安装包构建相关步骤
+        elif mode == "setup":
+            steps.extend([
+                build_setup_installer(__version__),
+                verify_installer(__version__)
+            ])
+
+        success = all(steps)
 
         if success:
-            console.rule("[bold green]✅ 打包成功！[/]")
-            console.print(f"生成的可执行文件位于：[bold underline]dist/{PROJECT_NAME}[/]")
-            clean_up()
+            if mode == "pack":
+                console.rule("[bold green]✅ 程序打包成功！[/]")
+                console.print(f"生成的可执行文件位于：[bold underline]dist/{PROJECT_NAME}[/]")
+                clean_up()
+            else:
+                console.rule("[bold green]✅ 安装包构建成功！[/]")
+                console.print(f"安装包位于：[bold underline]dist/{PROJECT_NAME}-{__version__}-setup.exe[/]")
         else:
-            console.rule("[bold red]❌ 打包失败！[/]")
+            console.rule("[bold red]❌ 构建失败！[/]")
 
     except PermissionError as e:
         console.print(f"✗ 权限错误: {e}", style="error")

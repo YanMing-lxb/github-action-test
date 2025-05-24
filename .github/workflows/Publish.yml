@@ -1,88 +1,76 @@
-name: Publish pytexmk 🐍  # 定义工作流的名称，当推送匹配的标签时发布到PyPI
+name: Publish RHS 🐍
+
 on:
   push:
     tags:
       - v*.*.*  # 当推送以v开头的标签时触发此工作流
 
 jobs:
-  build:
-    name: Build RefrTruck HeatLoad Solver
-    runs-on: windows-latest  # 指定运行此作业的操作系统
+  publish:
+    name: Build and Publish RefrTruck HeatLoad Solver
+    runs-on: windows-latest
 
     steps:
-    - name: Checkout source  # 检出源代码的步骤
-      uses: actions/checkout@v4  # 使用actions/checkout动作来检出代码
+      - name: Checkout source
+        uses: actions/checkout@v4
 
-    - name: Set up 🐍 Python  # 设置Python环境的步骤
-      uses: actions/setup-python@v5  # 使用actions/setup-python动作来设置Python环境
-      with:
-        python-version: "3.x"  # 指定Python版本为3.x
-
-    - name: Build 📦 source  # 构建源代码
-      run: |
-        cd ${{ github.workspace }}
-        $env:PYTHONIOENCODING = "utf-8"  # 使用PowerShell环境变量语法
-        python3 -m pip install --upgrade rich
-        python ${{ github.workspace }}\tools\pack.py
-      shell: pwsh
-
-    - name: Store the distribution packages
-      uses: actions/upload-artifact@v4
-      with:
-        name: windows-python-package-distributions
-        path: dist\*
-
-
-  publish-to-github-release:
-    name: Publish 🐍 PyTeXMK 📦 to GitHub Release  # 定义发布到GitHub Release作业的名称
-    if: startsWith(github.ref, 'refs/tags/')  # 只有在推送标签时才执行此作业
-    needs: build  # 指定此作业依赖于build作业
-    runs-on: ubuntu-latest  # 指定运行此作业的操作系统
-
-    steps:
-    - name: Checkout source  # 检出源代码的步骤
-      uses: actions/checkout@v4  # 使用actions/checkout动作来检出代码
-
-    - name: Download all the 📦 dists  # 下载所有分发包的步骤
-      uses: actions/download-artifact@v4
-      with:
-        name: windows-python-package-distributions
-        path: dist/ 
-    - name: Verify file structure after download
-      run: ls -R dist/
-    
-
-    - name: Extract tag name  # 提取标签名称的步骤
-      id: extract_tag
-      run: echo "TAG_NAME=${GITHUB_REF#refs/tags/}" >> $GITHUB_ENV
+      - name: Set up 🐍 Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.x"
       
-    - name: Generate Changelog
-      run: |
-        # 读取CHANGELOG.md文件内容
-        changelog=$(cat ${{ github.workspace }}/CHANGELOG.md)
-        
-        # 获取tag_name
-        tag_name=${{ env.TAG_NAME }}
-        
-        # 查找与tag_name匹配的版本号，并提取该版本号下的所有内容
-        version_header="## $tag_name"
-        if [[ $changelog == *"$version_header"* ]]; then
-          version_content=$(echo "$changelog" | awk -v version_header="$version_header" '
-            /^## / { if (p) exit; p=0 } 
-            $0 ~ version_header { p=1; next } 
-            p')
-          echo "$version_content"
-        else
-          echo "Version $tag_name not found in CHANGELOG.md"
-        fi
-        
-        # 将匹配的内容写入新的CHANGELOG.md文件
-        echo "$version_content" > ${{ github.workspace }}-CHANGELOG.txt
+      - name: Install Inno Setup
+        run: |
+          $url = "https://files.jrsoftware.org/is/6/innosetup-6.2.2.exe"
+          $installerPath = "$env:TEMP\innosetup-installer.exe"
+          Invoke-WebRequest -Uri $url -OutFile $installerPath
+          Start-Process -FilePath $installerPath -ArgumentList "/VERYSILENT /SUPPRESSMSGBOXES /DIR=C:\Program Files (x86)\Inno Setup 6" -Wait
 
-    - name: Publish to GitHub Release  # 发布到GitHub Release的步骤
-      uses: softprops/action-gh-release@v2  # 使用softprops/action-gh-release动作来发布到GitHub Release
-      with:
-        body_path: ${{ github.workspace }}-CHANGELOG.txt
-        token: ${{ secrets.GA_TEST }}  # 替换为实际的GitHub Token
-        name: RefrTruck HeatLoad Solver ${{ github.ref_name }} # 
-        files: dist/*  # 指定要发布的文件路径
+          # 将 Inno Setup 添加到 PATH 环境变量
+          [Environment]::SetEnvironmentVariable(
+            "PATH", 
+            "$env:PATH;C:\Program Files (x86)\Inno Setup 6", 
+            [EnvironmentVariableTarget]::Process
+          )
+        shell: pwsh
+
+      - name: Build 📦 source
+        run: |
+          cd ${{ github.workspace }}
+          $env:PYTHONIOENCODING = "utf-8"
+          python3 -m pip install --upgrade rich
+          python ${{ github.workspace }}\tools\pack.py pack
+          python ${{ github.workspace }}\tools\pack.py setup
+
+        shell: pwsh
+
+      - name: Extract tag name
+        id: extract_tag
+        run: echo "TAG_NAME=${GITHUB_REF#refs/tags/}" >> $GITHUB_ENV
+
+      - name: Generate Changelog
+        run: |
+          $changelog = Get-Content -Path "${{ github.workspace }}\CHANGELOG.md" -Raw
+          $tag_name = $env:TAG_NAME
+          $version_header = "## $tag_name"
+
+          if ($changelog -like "*$version_header*") {
+            $start = $changelog.IndexOf($version_header)
+            $end = $changelog.IndexOf("## ", $start + 1)
+            if ($end -eq -1) { $end = $changelog.Length }
+            $version_content = $changelog.Substring($start, $end - $start)
+            Write-Output $version_content
+            $version_content | Out-File "${{ github.workspace }}-CHANGELOG.txt"
+          } else {
+            Write-Output "Version $tag_name not found in CHANGELOG.md"
+          }
+        shell: pwsh
+
+      - name: Publish to GitHub Release
+        uses: softprops/action-gh-release@v2
+        if: startsWith(github.ref, 'refs/tags/')
+        with:
+          body_path: ${{ github.workspace }}-CHANGELOG.txt
+          token: ${{ secrets.GA_TEST }}
+          name: RefrTruck HeatLoad Solver ${{ github.ref_name }}
+          files: dist/*.exe
