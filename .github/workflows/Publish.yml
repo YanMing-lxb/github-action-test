@@ -50,20 +50,26 @@ jobs:
 
       - name: Generate Changelog
         run: |
-          $changelog = Get-Content -Path "${{ github.workspace }}\CHANGELOG.md" -Raw
-          $tag_name = $env:TAG_NAME
-          $version_header = "## $tag_name"
-
-          if ($changelog -like "*$version_header*") {
-            $start = $changelog.IndexOf($version_header)
-            $end = $changelog.IndexOf("## ", $start + 1)
-            if ($end -eq -1) { $end = $changelog.Length }
-            $version_content = $changelog.Substring($start, $end - $start)
-            Write-Output $version_content
-            $version_content | Out-File "${{ github.workspace }}-CHANGELOG.txt"
-          } else {
-            Write-Output "Version $tag_name not found in CHANGELOG.md"
-          }
+          # Read the content of CHANGELOG.md
+          changelog=$(cat "${GITHUB_WORKSPACE}/CHANGELOG.md")
+          
+          # Get the tag name
+          tag_name="${TAG_NAME}"
+          
+          # Find the section matching the tag name and extract it
+          version_header="## $tag_name"
+          if [[ "$changelog" == *"$version_header"* ]]; then
+            # Extract the content under the version header until the next '##' header
+            version_content=$(echo "$changelog" | awk -v version_header="$version_header" '
+              $0 ~ version_header { p=1; next }
+              /^## / && p { exit }
+              p')
+            echo "$version_content"
+            # Write the extracted content to a new file
+            echo "$version_content" > "${GITHUB_WORKSPACE}-CHANGELOG.txt"
+          else
+            echo "Version $tag_name not found in CHANGELOG.md"
+          fi
         shell: pwsh
 
       - name: Publish to GitHub Release
