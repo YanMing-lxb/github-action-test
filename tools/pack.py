@@ -19,7 +19,7 @@
  -----------------------------------------------------------------------
 Author       : 焱铭
 Date         : 2025-04-25 12:28:56 +0800
-LastEditTime : 2025-05-24 14:29:01 +0800
+LastEditTime : 2025-05-24 14:35:50 +0800
 Github       : https://github.com/YanMing-lxb/
 FilePath     : /github-action-test/tools/pack.py
 Description  : 
@@ -245,15 +245,15 @@ def build_setup_installer(version: str = __version__) -> bool:
 
     # 构建安装包
     command = [
-    "ISCC",
-        f'/DMyAppName="{PROJECT_NAME}"',
-        f'/DMyAppVersion="{version}"',
-        f'/DMyAppExeName="{PROJECT_NAME}.exe"',
-        f'/DMyOutputBaseFilename="{PROJECT_NAME}-{version}-setup"',
-        f'/DMySetupIconFile="..\\dist\\{PROJECT_NAME}\\other\\_internal\\assets\\logo.ico"',
-        f'/DMyFilesSource="..\\dist\\{PROJECT_NAME}"',
+        "ISCC",
+        f'/DMyAppName={PROJECT_NAME}',
+        f'/DMyAppVersion={__version__}',
+        f'/DMyAppExeName={PROJECT_NAME}.exe',
+        f'/DMyOutputBaseFilename={PROJECT_NAME}-{__version__}-setup',
+        f'/DMySetupIconFile=..\\dist\\{PROJECT_NAME}\\other\\_internal\\assets\\logo.ico',
+        f'/DMyFilesSource=..\\dist\\{PROJECT_NAME}',
         '/Odist',
-        '".\\tools\\Inno Setup Script.iss"'  # 确保 .iss 路径也被引号包裹
+        '.\\tools\\Inno Setup Script.iss'  # 这里不需要加引号！
     ]
 
     success = run_command(
