@@ -60,20 +60,35 @@ jobs:
           $version_header = "## $tag_name"
 
           # Check if changelog contains the version header
-          if ($changelog -like "*$version_header*") {
-              # Find the start index of the version header
-              $start = $changelog.IndexOf($version_header)
+          if ($changelog -match [regex]::Escape($version_header)) {
+              # Split the changelog into lines
+              $lines = $changelog -split [Environment]::NewLine
 
-              # Find the end index (start of the next version header)
-              $end = $changelog.IndexOf("## ", $start + 1)
+              # Find index of the target header
+              $startIndex = -1
+              for ($i = 0; $i -lt $lines.Length; $i++) {
+                  if ($lines[$i] -match "^##\s+$tag_name") {
+                      $startIndex = $i
+                      break
+                  }
+              }
 
-              # If no further header is found, set end to the end of the file
-              if ($end -eq -1) { 
-                  $end = $changelog.Length 
+              if ($startIndex -eq -1) {
+                  Write-Output "Version header not found"
+                  exit 1
+              }
+
+              # Find next header starting with '## '
+              $endIndex = $lines.Length
+              for ($i = $startIndex + 1; $i -lt $lines.Length; $i++) {
+                  if ($lines[$i] -match "^## ") {
+                      $endIndex = $i
+                      break
+                  }
               }
 
               # Extract content between this version header and the next one
-              $version_content = $changelog.Substring($start, $end - $start).Trim()
+              $version_content = $lines[$startIndex..($endIndex - 1)] | Out-String
 
               # Output and write to file
               Write-Output $version_content
