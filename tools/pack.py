@@ -19,9 +19,9 @@
  -----------------------------------------------------------------------
 Author       : 焱铭
 Date         : 2025-04-25 12:28:56 +0800
-LastEditTime : 2025-05-24 16:09:38 +0800
+LastEditTime : 2025-05-24 16:24:44 +0800
 Github       : https://github.com/YanMing-lxb/
-FilePath     : /RefrTruck-HeatLoad-Solver/tools/pack.py
+FilePath     : /github-action-test/tools/pack.py
 Description  : 
  -----------------------------------------------------------------------
 '''
@@ -255,7 +255,7 @@ def build_setup_installer(version: str = __version__) -> bool:
         f'/DMySetupIconFile=..\\dist\\{PROJECT_NAME}\\other\\_internal\\assets\\logo.ico',
         f'/DMyFilesSource=..\\dist\\{PROJECT_NAME}',
         '/Odist',
-        '.\\tools\\Inno Setup Script.iss'  # ✅ 去掉引号
+        '.\\tools\\Inno_Setup_Script.iss'  # ✅ 去掉引号
     ]
     success = run_command(
         command=command,
