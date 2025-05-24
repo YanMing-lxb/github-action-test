@@ -19,7 +19,7 @@
  -----------------------------------------------------------------------
 Author       : 焱铭
 Date         : 2025-04-25 12:28:56 +0800
-LastEditTime : 2025-05-24 13:51:04 +0800
+LastEditTime : 2025-05-24 14:29:01 +0800
 Github       : https://github.com/YanMing-lxb/
 FilePath     : /github-action-test/tools/pack.py
 Description  : 
@@ -101,7 +101,8 @@ def run_command(command: list, success_msg: str, error_msg: str, process_name: s
             stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT,
             text=True,
-            bufsize=1
+            bufsize=1,
+            encoding='utf-8', 
         )
         
         with console.status(f"[status]正在{process_name}..."):  # 动态状态提示
@@ -244,18 +245,20 @@ def build_setup_installer(version: str = __version__) -> bool:
 
     # 构建安装包
     command = [
-        "ISCC",
-        f"/DMyAppName={PROJECT_NAME}",
-        f"/DMyAppVersion={version}",
-        f"/DMyAppExeName={PROJECT_NAME}.exe",
-        f"/F{PROJECT_NAME}-{version}-setup",
-        "/Odist",
-        ".\\tools\\Inno Setup Script.iss"
+    "ISCC",
+        f'/DMyAppName="{PROJECT_NAME}"',
+        f'/DMyAppVersion="{version}"',
+        f'/DMyAppExeName="{PROJECT_NAME}.exe"',
+        f'/DMyOutputBaseFilename="{PROJECT_NAME}-{version}-setup"',
+        f'/DMySetupIconFile="..\\dist\\{PROJECT_NAME}\\other\\_internal\\assets\\logo.ico"',
+        f'/DMyFilesSource="..\\dist\\{PROJECT_NAME}"',
+        '/Odist',
+        '".\\tools\\Inno Setup Script.iss"'  # 确保 .iss 路径也被引号包裹
     ]
 
     success = run_command(
         command=command,
-        success_msg=f"安装包构建成功 → dist\{PROJECT_NAME}-{version}-setup.exe",
+        success_msg=f"安装包构建成功 → dist\\{PROJECT_NAME}-{version}-setup.exe",
         error_msg="安装包构建失败",
         process_name="构建安装包"
     )
