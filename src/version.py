@@ -16,9 +16,9 @@
  -----------------------------------------------------------------------
 Author       : 焱铭
 Date         : 2025-04-10 13:57:10 +0800
-LastEditTime : 2025-05-21 14:17:27 +0800
+LastEditTime : 2025-05-24 14:45:19 +0800
 Github       : https://github.com/YanMing-lxb/
-FilePath     : /RefrTruck-HeatLoad-Solver/src/version.py
+FilePath     : /github-action-test/src/version.py
 Description  : 
  -----------------------------------------------------------------------
 '''
@@ -26,7 +26,7 @@ Description  :
 #!/usr/bin/env python
 
 __project_name__ = 'RefrTruck HeatLoad Solver'
-__version__ = '0.1.0'
+__version__ = '0.1.1'
 __date__ = '2025-05-14'
 __author__ = '李雪斌'
 __team__ = '吉林大学低碳汽车协同创新中心\n李明教授团队'
