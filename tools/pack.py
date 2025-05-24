@@ -19,9 +19,9 @@
  -----------------------------------------------------------------------
 Author       : 焱铭
 Date         : 2025-04-25 12:28:56 +0800
-LastEditTime : 2025-05-24 14:35:50 +0800
+LastEditTime : 2025-05-24 16:09:38 +0800
 Github       : https://github.com/YanMing-lxb/
-FilePath     : /github-action-test/tools/pack.py
+FilePath     : /RefrTruck-HeatLoad-Solver/tools/pack.py
 Description  : 
  -----------------------------------------------------------------------
 '''
@@ -38,7 +38,7 @@ sys.path.append(str(BASE_DIR))  # 关键路径设置
 from rich.theme import Theme
 from rich.console import Console
 
-from src.version import __project_name__, __version__, __team__, __description__
+from src.version import __project_name__, __version__, __team__, __url__ ,__description__
 
 if sys.stdout.encoding != 'UTF-8':
     sys.stdout.reconfigure(encoding='utf-8')
@@ -248,14 +248,15 @@ def build_setup_installer(version: str = __version__) -> bool:
         "ISCC",
         f'/DMyAppName={PROJECT_NAME}',
         f'/DMyAppVersion={__version__}',
+        f'/DMyAppPublisher={__team__}',
+        f'/DMyAppURL={__url__}',
         f'/DMyAppExeName={PROJECT_NAME}.exe',
         f'/DMyOutputBaseFilename={PROJECT_NAME}-{__version__}-setup',
         f'/DMySetupIconFile=..\\dist\\{PROJECT_NAME}\\other\\_internal\\assets\\logo.ico',
         f'/DMyFilesSource=..\\dist\\{PROJECT_NAME}',
         '/Odist',
-        '.\\tools\\Inno Setup Script.iss'  # 这里不需要加引号！
+        '.\\tools\\Inno Setup Script.iss'  # ✅ 去掉引号
     ]
-
     success = run_command(
         command=command,
         success_msg=f"安装包构建成功 → dist\\{PROJECT_NAME}-{version}-setup.exe",
