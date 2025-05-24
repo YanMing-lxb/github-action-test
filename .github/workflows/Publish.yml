@@ -51,27 +51,43 @@ jobs:
       - name: Generate Changelog
         run: |
           # Read the content of CHANGELOG.md
-          changelog=$(cat "${GITHUB_WORKSPACE}/CHANGELOG.md")
-          
-          # Get the tag name
-          tag_name="${TAG_NAME}"
-          
-          # Find the section matching the tag name and extract it
-          version_header="## $tag_name"
-          if [[ "$changelog" == *"$version_header"* ]]; then
-            # Extract the content under the version header until the next '##' header
-            version_content=$(echo "$changelog" | awk -v version_header="$version_header" '
-              $0 ~ version_header { p=1; next }
-              /^## / && p { exit }
-              p')
-            echo "$version_content"
-            # Write the extracted content to a new file
-            echo "$version_content" > "${GITHUB_WORKSPACE}-CHANGELOG.txt"
-          else
-            echo "Version $tag_name not found in CHANGELOG.md"
-          fi
-        shell: pwsh
+          $changelog = Get-Content -Path "${env:GITHUB_WORKSPACE}\CHANGELOG.md" -Raw
 
+          # Get the tag name
+          $tag_name = "${env:TAG_NAME}"
+
+          # Define version header
+          $version_header = "## $tag_name"
+
+          # Check if changelog contains the version header
+          if ($changelog -like "*$version_header*") {
+              # Extract content between this version header and next one
+              $lines = $changelog -split [environment]::NewLine
+              $startIndex = $lines.IndexOf($version_header) + 1
+              if ($startIndex -lt 0) {
+                  Write-Output "Version header not found"
+                  exit 1
+              }
+
+              $endIndex = $lines.Length
+              for ($i = $startIndex; $i -lt $lines.Length; $i++) {
+                  if ($lines[$i] -match "^## .+") {
+                      $endIndex = $i
+                      break
+                  }
+              }
+
+              $version_content = $lines[$startIndex..($endIndex - 1)]
+
+              # Output and write to file
+              $version_content | Out-String | Write-Output
+              $version_content | Out-File -FilePath "${env:GITHUB_WORKSPACE}-CHANGELOG.txt" -Encoding utf8
+          } else {
+              Write-Output "Version $tag_name not found in CHANGELOG.md"
+              exit 1
+          }
+        shell: pwsh
+        
       - name: Publish to GitHub Release
         uses: softprops/action-gh-release@v2
         if: startsWith(github.ref, 'refs/tags/')
