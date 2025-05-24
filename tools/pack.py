@@ -19,7 +19,7 @@
  -----------------------------------------------------------------------
 Author       : 焱铭
 Date         : 2025-04-25 12:28:56 +0800
-LastEditTime : 2025-05-24 16:26:20 +0800
+LastEditTime : 2025-05-24 16:29:06 +0800
 Github       : https://github.com/YanMing-lxb/
 FilePath     : /github-action-test/tools/pack.py
 Description  : 
@@ -248,7 +248,7 @@ def build_setup_installer(version: str = __version__) -> bool:
         "ISCC",
         f'/DMyAppName={PROJECT_NAME}',
         f'/DMyAppVersion={__version__}',
-        # f'/DMyAppPublisher={__team__}',
+        f'/DMyAppPublisher="{__team__.replace("\\n", "--")}"'
         f'/DMyAppURL={__url__}',
         f'/DMyAppExeName={PROJECT_NAME}.exe',
         f'/DMyOutputBaseFilename={PROJECT_NAME}-{__version__}-setup',
