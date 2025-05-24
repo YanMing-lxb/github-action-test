@@ -26,7 +26,7 @@ Description  :
 #!/usr/bin/env python
 
 __project_name__ = 'RefrTruck HeatLoad Solver'
-__version__ = '0.1.3'
+__version__ = '0.1.4'
 __date__ = '2025-05-14'
 __author__ = '李雪斌'
 __team__ = '吉林大学低碳汽车协同创新中心\n李明教授团队'

@@ -61,33 +61,29 @@ jobs:
 
           # Check if changelog contains the version header
           if ($changelog -like "*$version_header*") {
-              # Extract content between this version header and next one
-              $lines = $changelog -split [environment]::NewLine
-              $startIndex = $lines.IndexOf($version_header) + 1
-              if ($startIndex -lt 0) {
-                  Write-Output "Version header not found"
-                  exit 1
+              # Find the start index of the version header
+              $start = $changelog.IndexOf($version_header)
+
+              # Find the end index (start of the next version header)
+              $end = $changelog.IndexOf("## ", $start + 1)
+
+              # If no further header is found, set end to the end of the file
+              if ($end -eq -1) { 
+                  $end = $changelog.Length 
               }
 
-              $endIndex = $lines.Length
-              for ($i = $startIndex; $i -lt $lines.Length; $i++) {
-                  if ($lines[$i] -match "^## .+") {
-                      $endIndex = $i
-                      break
-                  }
-              }
-
-              $version_content = $lines[$startIndex..($endIndex - 1)]
+              # Extract content between this version header and the next one
+              $version_content = $changelog.Substring($start, $end - $start).Trim()
 
               # Output and write to file
-              $version_content | Out-String | Write-Output
+              Write-Output $version_content
               $version_content | Out-File -FilePath "${env:GITHUB_WORKSPACE}-CHANGELOG.txt" -Encoding utf8
           } else {
               Write-Output "Version $tag_name not found in CHANGELOG.md"
               exit 1
           }
         shell: pwsh
-        
+
       - name: Publish to GitHub Release
         uses: softprops/action-gh-release@v2
         if: startsWith(github.ref, 'refs/tags/')
